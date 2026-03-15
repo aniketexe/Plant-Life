@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PhytoScan — Plant & Forest Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Martian+Mono:wght@300;400;500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --forest:#0b1f12; --moss:#163320; --fern:#2d6a4f; --leaf:#52b788;
+  --sprout:#95d5b2; --mist:#d8f3dc; --cream:#f4efe6;
+  --amber:#e9a62a; --rust:#c0392b; --sky:#74b3ce; --purple:#9b59b6;
+}
+html { scroll-behavior: smooth; }
+body { font-family:'Instrument Sans',sans-serif; background:var(--forest); color:var(--cream); min-height:100vh; overflow-x:hidden; }
+body::before { content:''; position:fixed; inset:0; z-index:0;
+  background: radial-gradient(ellipse 70% 50% at 15% 5%, rgba(82,183,136,.09) 0%,transparent 55%),
+              radial-gradient(ellipse 50% 70% at 85% 85%, rgba(116,179,206,.06) 0%,transparent 55%),
+              radial-gradient(ellipse 100% 100% at 50% 50%, rgba(22,51,32,.6) 0%,transparent 100%);
+  pointer-events:none; }
+body::after { content:''; position:fixed; inset:0; z-index:0; opacity:.35;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+  pointer-events:none; }
+.page { position:relative; z-index:1; max-width:1060px; margin:0 auto; padding:0 24px 60px; }
+
+/* HEADER */
+header { padding:40px 0 30px; border-bottom:1px solid rgba(82,183,136,.14); display:flex; align-items:center; gap:18px; margin-bottom:32px; flex-wrap:wrap; }
+.logo-icon { width:54px; height:54px; flex-shrink:0; background:linear-gradient(140deg,var(--fern),var(--leaf)); border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:28px; box-shadow:0 6px 24px rgba(82,183,136,.28); }
+.logo-copy h1 { font-family:'DM Serif Display',serif; font-size:30px; letter-spacing:-.6px; color:var(--mist); line-height:1; }
+.logo-copy p { font-family:'Martian Mono',monospace; font-size:10px; color:var(--leaf); letter-spacing:2.5px; text-transform:uppercase; margin-top:4px; }
+.gemini-badge { margin-left:auto; background:rgba(82,183,136,.08); border:1px solid rgba(82,183,136,.2); border-radius:20px; padding:6px 14px; font-family:'Martian Mono',monospace; font-size:10px; color:var(--leaf); letter-spacing:1px; }
+
+/* LAYOUT */
+.main-layout { display:grid; grid-template-columns:380px 1fr; gap:24px; align-items:start; }
+@media(max-width:780px){.main-layout{grid-template-columns:1fr;}}
+.left-panel { display:flex; flex-direction:column; gap:18px; }
+
+/* UPLOAD */
+.upload-zone { border:2px dashed rgba(82,183,136,.22); border-radius:20px; padding:36px 20px; text-align:center; cursor:pointer; transition:all .28s; position:relative; overflow:hidden; min-height:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.upload-zone:hover,.upload-zone.over { border-color:var(--leaf); background:rgba(82,183,136,.05); }
+.upload-zone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; }
+.uz-icon { font-size:40px; margin-bottom:10px; }
+.upload-zone h2 { font-family:'DM Serif Display',serif; font-size:19px; color:var(--mist); margin-bottom:6px; }
+.upload-zone p { font-size:12px; color:rgba(255,255,255,.38); line-height:1.6; }
+.chips { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:12px; }
+.chip { background:rgba(82,183,136,.08); border:1px solid rgba(82,183,136,.16); border-radius:20px; padding:4px 12px; font-family:'Martian Mono',monospace; font-size:9px; color:var(--sprout); }
+
+/* PREVIEW */
+.preview-box { border-radius:16px; overflow:hidden; border:1px solid rgba(82,183,136,.14); display:none; }
+.preview-box.visible { display:block; }
+.preview-box img { width:100%; max-height:220px; object-fit:cover; display:block; }
+.preview-footer { padding:10px 14px; background:rgba(255,255,255,.03); display:flex; justify-content:space-between; align-items:center; }
+.preview-footer span { font-family:'Martian Mono',monospace; font-size:10px; color:var(--leaf); }
+.clear-btn { background:none; border:none; cursor:pointer; color:rgba(255,255,255,.3); font-size:16px; transition:color .2s; }
+.clear-btn:hover { color:var(--rust); }
+
+/* ANALYSIS MODE SELECTOR */
+.mode-panel { background:rgba(255,255,255,.03); border:1px solid rgba(82,183,136,.15); border-radius:16px; padding:16px 18px; display:none; }
+.mode-panel.visible { display:block; animation:fadeUp .3s ease; }
+.mode-label { font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--leaf); text-transform:uppercase; margin-bottom:12px; }
+.mode-options { display:flex; flex-direction:column; gap:8px; }
+.mode-opt { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.07); cursor:pointer; transition:all .2s; }
+.mode-opt:hover { border-color:rgba(82,183,136,.25); background:rgba(82,183,136,.04); }
+.mode-opt input[type="checkbox"] { accent-color:var(--leaf); width:15px; height:15px; flex-shrink:0; margin-top:2px; cursor:pointer; }
+.mode-opt-body { flex:1; }
+.mode-opt-title { font-size:13px; font-weight:600; color:var(--mist); }
+.mode-opt-desc { font-size:11px; color:rgba(255,255,255,.38); margin-top:2px; line-height:1.4; }
+.mode-opt.checked { border-color:rgba(82,183,136,.35); background:rgba(82,183,136,.06); }
+
+/* ANALYZE BUTTON */
+.analyze-btn { width:100%; padding:17px; background:linear-gradient(130deg,var(--fern),var(--leaf)); border:none; border-radius:14px; cursor:pointer; font-family:'DM Serif Display',serif; font-size:19px; color:#fff; letter-spacing:.3px; transition:all .28s; position:relative; overflow:hidden; box-shadow:0 6px 28px rgba(82,183,136,.22); }
+.analyze-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 10px 36px rgba(82,183,136,.32); }
+.analyze-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+.shimmer { position:absolute; inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent); transform:translateX(-100%); }
+.analyze-btn:hover:not(:disabled) .shimmer { animation:shimmer .75s ease; }
+@keyframes shimmer { to{transform:translateX(100%);} }
+
+/* RIGHT PANEL */
+.right-panel { display:flex; flex-direction:column; gap:20px; }
+.loading-state { display:none; text-align:center; padding:60px 20px; background:rgba(255,255,255,.02); border:1px solid rgba(82,183,136,.1); border-radius:20px; }
+.loading-state.active { display:block; animation:fadeUp .3s ease; }
+.spin-leaf { font-size:52px; display:inline-block; animation:spin 1.6s linear infinite; }
+@keyframes spin { 0%{transform:rotate(0deg) scale(1);} 50%{transform:rotate(180deg) scale(1.1);} 100%{transform:rotate(360deg) scale(1);} }
+.loading-state p { font-family:'Martian Mono',monospace; font-size:11px; color:var(--leaf); margin-top:16px; letter-spacing:1.5px; }
+.loading-state .sub { font-size:10px; color:rgba(255,255,255,.3); margin-top:6px; letter-spacing:.5px; }
+.ldots::after { content:''; animation:ldots 1.4s infinite; }
+@keyframes ldots { 0%,25%{content:'.';} 50%,75%{content:'..';} 100%{content:'...';} }
+.placeholder-state { text-align:center; padding:60px 20px; background:rgba(255,255,255,.015); border:1px dashed rgba(255,255,255,.07); border-radius:20px; }
+.placeholder-state p { font-family:'Martian Mono',monospace; font-size:11px; color:rgba(255,255,255,.2); letter-spacing:1px; }
+.error-state { display:none; background:rgba(192,57,43,.07); border:1px solid rgba(192,57,43,.22); border-radius:16px; padding:20px 24px; }
+.error-state.visible { display:block; animation:fadeUp .3s ease; }
+.error-state h4 { font-family:'DM Serif Display',serif; color:#e74c3c; font-size:18px; margin-bottom:6px; }
+.error-state p { font-size:13px; color:rgba(255,255,255,.45); line-height:1.6; }
+.results { display:none; flex-direction:column; gap:18px; }
+.results.visible { display:flex; animation:fadeUp .4s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+/* RESULT HEADER */
+.r-header { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.r-header h3 { font-family:'DM Serif Display',serif; font-size:22px; color:var(--mist); }
+.type-tag { padding:5px 13px; border-radius:20px; font-family:'Martian Mono',monospace; font-size:10px; letter-spacing:1px; text-transform:uppercase; }
+.type-tag.sp  { background:rgba(82,183,136,.13); color:var(--sprout); border:1px solid rgba(82,183,136,.28); }
+.type-tag.fc  { background:rgba(116,179,206,.13); color:var(--sky);    border:1px solid rgba(116,179,206,.28); }
+.type-tag.mix { background:rgba(233,166,42,.13);  color:var(--amber);  border:1px solid rgba(233,166,42,.28); }
+.conf-wrap { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.conf-lbl { font-family:'Martian Mono',monospace; font-size:9px; color:rgba(255,255,255,.3); }
+.conf-track { width:80px; height:5px; background:rgba(255,255,255,.07); border-radius:3px; overflow:hidden; }
+.conf-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--fern),var(--leaf)); transition:width 1s ease; }
+.conf-pct { font-family:'Martian Mono',monospace; font-size:11px; color:var(--leaf); }
+
+/* CARDS */
+.card-label { font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:2px; color:var(--leaf); text-transform:uppercase; margin-bottom:10px; }
+.summary-card { background:linear-gradient(140deg,rgba(45,106,79,.18),rgba(11,31,18,.45)); border:1px solid rgba(82,183,136,.18); border-radius:16px; padding:20px 22px; position:relative; overflow:hidden; }
+.summary-card::after { content:'🌿'; position:absolute; right:16px; bottom:12px; font-size:56px; opacity:.07; pointer-events:none; }
+.summary-text { font-size:14px; line-height:1.75; color:rgba(255,255,255,.82); }
+.advice-strip { margin-top:14px; padding:12px 16px; background:rgba(82,183,136,.07); border-left:3px solid var(--leaf); border-radius:0 8px 8px 0; font-size:13px; color:var(--mist); line-height:1.65; }
+
+/* TILES */
+.tiles { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+.tile { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:14px; transition:border-color .2s; }
+.tile:hover { border-color:rgba(82,183,136,.18); }
+.tile-k { font-family:'Martian Mono',monospace; font-size:9px; letter-spacing:1.5px; color:rgba(255,255,255,.28); text-transform:uppercase; margin-bottom:5px; }
+.tile-v { font-size:14px; font-weight:600; color:var(--mist); word-break:break-word; line-height:1.3; }
+.tile-v.g { color:var(--leaf); } .tile-v.w { color:var(--amber); } .tile-v.b { color:#e74c3c; }
+
+/* GROWTH SCALE */
+.growth-card { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:16px; padding:18px 20px; }
+.growth-stages { display:flex; align-items:center; gap:0; margin-top:14px; position:relative; }
+.growth-stage-item { flex:1; text-align:center; position:relative; }
+.stage-dot { width:22px; height:22px; border-radius:50%; background:rgba(255,255,255,.1); border:2px solid rgba(255,255,255,.15); margin:0 auto 6px; display:flex; align-items:center; justify-content:center; font-size:10px; transition:all .4s; position:relative; z-index:1; }
+.stage-dot.active { background:var(--leaf); border-color:var(--leaf); box-shadow:0 0 12px rgba(82,183,136,.5); }
+.stage-dot.past { background:var(--fern); border-color:var(--fern); }
+.stage-label { font-family:'Martian Mono',monospace; font-size:8px; color:rgba(255,255,255,.3); letter-spacing:.5px; }
+.stage-label.active { color:var(--sprout); }
+.stage-connector { position:absolute; top:10px; left:0; right:0; height:2px; background:rgba(255,255,255,.08); z-index:0; }
+.stage-connector-fill { height:100%; background:linear-gradient(90deg,var(--fern),var(--leaf)); transition:width 1s ease; }
+
+/* MEDICAL BENEFITS */
+.medical-card { background:rgba(155,89,182,.07); border:1px solid rgba(155,89,182,.2); border-radius:16px; padding:20px 22px; }
+.medical-card .card-label { color:#bb8fce; }
+.benefit-list { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+.benefit-item { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; background:rgba(155,89,182,.06); border-radius:10px; border:1px solid rgba(155,89,182,.12); }
+.benefit-icon { font-size:18px; flex-shrink:0; }
+.benefit-body { flex:1; }
+.benefit-title { font-size:13px; font-weight:600; color:#d7bde2; margin-bottom:3px; }
+.benefit-desc { font-size:12px; color:rgba(255,255,255,.55); line-height:1.5; }
+.disclaimer { margin-top:12px; font-size:11px; color:rgba(255,255,255,.25); font-style:italic; line-height:1.5; }
+
+/* HEALTH / OUTGROWTH */
+.health-card { background:rgba(231,76,60,.05); border:1px solid rgba(231,76,60,.18); border-radius:16px; padding:20px 22px; }
+.health-card .card-label { color:#f1948a; }
+.outgrowth-section { margin-top:12px; }
+.outgrowth-img-wrap { position:relative; display:inline-block; width:100%; }
+.outgrowth-img-wrap img { width:100%; border-radius:10px; display:block; }
+.outgrowth-canvas { position:absolute; inset:0; width:100%; height:100%; border-radius:10px; }
+.outgrowth-list { display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+.outgrowth-item { padding:12px 14px; background:rgba(231,76,60,.06); border-radius:10px; border-left:3px solid #e74c3c; }
+.outgrowth-item h5 { font-size:13px; font-weight:600; color:#f1948a; margin-bottom:4px; }
+.outgrowth-item p { font-size:12px; color:rgba(255,255,255,.6); line-height:1.5; }
+.removal-method { margin-top:8px; padding:8px 10px; background:rgba(255,255,255,.04); border-radius:8px; font-size:12px; color:rgba(255,255,255,.7); line-height:1.5; }
+.removal-method strong { color:var(--amber); }
+
+/* CARE SCHEDULE */
+.care-card { background:rgba(116,179,206,.05); border:1px solid rgba(116,179,206,.18); border-radius:16px; padding:20px 22px; }
+.care-card .card-label { color:var(--sky); }
+.watering-schedule { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin:14px 0 18px; }
+.day-cell { text-align:center; }
+.day-name { font-family:'Martian Mono',monospace; font-size:8px; color:rgba(255,255,255,.3); margin-bottom:4px; }
+.day-dot { width:28px; height:28px; border-radius:8px; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); }
+.day-dot.water { background:rgba(116,179,206,.2); border-color:rgba(116,179,206,.4); }
+.day-dot.fertilize { background:rgba(233,166,42,.15); border-color:rgba(233,166,42,.3); }
+.schedule-legend { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+.legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:rgba(255,255,255,.5); }
+.legend-dot { width:10px; height:10px; border-radius:3px; }
+.care-details { display:flex; flex-direction:column; gap:8px; }
+.care-row { display:flex; gap:10px; padding:10px 12px; background:rgba(116,179,206,.04); border-radius:10px; border:1px solid rgba(116,179,206,.1); }
+.care-row-icon { font-size:18px; flex-shrink:0; }
+.care-row-body { flex:1; }
+.care-row-title { font-size:12px; font-weight:600; color:#a9cce3; margin-bottom:2px; }
+.care-row-val { font-size:12px; color:rgba(255,255,255,.6); line-height:1.5; }
+
+/* FOREST HEATMAP */
+.heatmap-card { background:rgba(255,255,255,.02); border:1px solid rgba(116,179,206,.18); border-radius:16px; padding:20px 22px; }
+.heatmap-card .card-label { color:var(--sky); }
+.heatmap-wrap { position:relative; border-radius:12px; overflow:hidden; margin-top:12px; }
+.heatmap-wrap img.base-img { width:100%; display:block; border-radius:12px; }
+.heatmap-canvas { position:absolute; inset:0; width:100%; height:100%; border-radius:12px; opacity:.72; }
+.heatmap-legend { display:flex; align-items:center; gap:10px; margin-top:12px; }
+.heatmap-grad { flex:1; height:12px; border-radius:6px; background:linear-gradient(90deg,#1a0000,#8b0000,#ff4500,#ffa500,#ffff00,#7fff00,#00ff00); }
+.heatmap-legend span { font-family:'Martian Mono',monospace; font-size:9px; color:rgba(255,255,255,.4); }
+.heatmap-mode-btns { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+.hm-btn { padding:6px 14px; border-radius:20px; border:1px solid rgba(116,179,206,.2); background:none; cursor:pointer; font-family:'Martian Mono',monospace; font-size:10px; color:rgba(255,255,255,.4); transition:all .2s; }
+.hm-btn.active { background:rgba(116,179,206,.15); border-color:var(--sky); color:var(--sky); }
+
+/* TIPS + JSON */
+.tips-card { background:rgba(233,166,42,.05); border:1px solid rgba(233,166,42,.17); border-radius:14px; padding:18px 22px; }
+.tips-card .card-label { color:var(--amber); }
+.tips-card p { font-size:13px; color:rgba(255,255,255,.65); line-height:1.65; }
+.json-toggle { background:none; border:1px solid rgba(82,183,136,.13); border-radius:8px; padding:7px 14px; cursor:pointer; font-family:'Martian Mono',monospace; font-size:10px; color:rgba(255,255,255,.28); transition:all .2s; align-self:flex-start; }
+.json-toggle:hover { border-color:var(--leaf); color:var(--leaf); }
+.json-pre { display:none; background:rgba(0,0,0,.45); border:1px solid rgba(82,183,136,.12); border-radius:12px; padding:18px; font-family:'Martian Mono',monospace; font-size:10px; color:var(--sprout); line-height:1.6; overflow:auto; white-space:pre; max-height:360px; }
+.json-pre.open { display:block; animation:fadeUp .3s ease; }
+
+footer { border-top:1px solid rgba(82,183,136,.1); margin-top:48px; padding:24px 0; text-align:center; font-family:'Martian Mono',monospace; font-size:9px; color:rgba(255,255,255,.18); letter-spacing:1px; }
+footer em { color:rgba(82,183,136,.45); font-style:normal; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo-icon">🌿</div>
+    <div class="logo-copy">
+      <h1>PhytoScan</h1>
+      <p>Plant &amp; Forest Intelligence</p>
+    </div>
+    <div class="gemini-badge">✦ GEMINI VISION</div>
+  </header>
+
+  <div class="main-layout">
+    <!-- LEFT -->
+    <div class="left-panel">
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept="image/*" />
+        <div class="uz-icon">📷</div>
+        <h2>Upload plant or forest image</h2>
+        <p>Close-up leaf · Aerial canopy · Forest patch<br>JPG / PNG / WebP up to 10 MB</p>
+        <div class="chips">
+          <span class="chip">🌱 Single plant</span>
+          <span class="chip">🛩️ Aerial view</span>
+          <span class="chip">🌳 Forest cover</span>
+        </div>
+      </div>
+
+      <div class="preview-box" id="previewBox">
+        <img id="previewImg" src="" alt="preview" />
+        <div class="preview-footer">
+          <span id="previewName">—</span>
+          <button class="clear-btn" id="clearBtn" title="Remove">✕</button>
+        </div>
+      </div>
+
+      <!-- MODE SELECTOR (plant only) -->
+      <div class="mode-panel" id="modePanel">
+        <div class="mode-label">Select Analysis Modules</div>
+        <div class="mode-options">
+          <label class="mode-opt" id="opt-medical">
+            <input type="checkbox" id="chk-medical" checked />
+            <div class="mode-opt-body">
+              <div class="mode-opt-title">🌿 Medical Benefits</div>
+              <div class="mode-opt-desc">Traditional &amp; modern medicinal uses of the plant</div>
+            </div>
+          </label>
+          <label class="mode-opt" id="opt-health">
+            <input type="checkbox" id="chk-health" checked />
+            <div class="mode-opt-body">
+              <div class="mode-opt-title">🔬 Plant Health &amp; Outgrowths</div>
+              <div class="mode-opt-desc">Detects abnormalities; marks outgrowths with removal method</div>
+            </div>
+          </label>
+          <label class="mode-opt" id="opt-care">
+            <input type="checkbox" id="chk-care" checked />
+            <div class="mode-opt-body">
+              <div class="mode-opt-title">📅 Detailed Care Plan</div>
+              <div class="mode-opt-desc">Weekly watering schedule, sunlight, soil &amp; fertilizer guide</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <button class="analyze-btn" id="analyzeBtn" disabled>
+        <span class="shimmer"></span>
+        Analyze with Gemini Vision ✦
+      </button>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right-panel">
+      <div class="placeholder-state" id="placeholder">
+        <div style="font-size:48px;margin-bottom:14px;">🔬</div>
+        <p>Upload an image to begin analysis</p>
+      </div>
+
+      <div class="loading-state" id="loadingState">
+        <div class="spin-leaf">🔬</div>
+        <p class="ldots">Scanning with Gemini Vision</p>
+        <p class="sub" id="loadingSub">Identifying species and health markers…</p>
+      </div>
+
+      <div class="error-state" id="errorState">
+        <h4>Analysis Failed</h4>
+        <p id="errorMsg"></p>
+      </div>
+
+      <div class="results" id="resultsPanel">
+
+        <!-- Header row -->
+        <div class="r-header">
+          <h3>Analysis Report</h3>
+          <span class="type-tag" id="typeTag">—</span>
+          <div class="conf-wrap">
+            <span class="conf-lbl">CONFIDENCE</span>
+            <div class="conf-track"><div class="conf-fill" id="confFill" style="width:0%"></div></div>
+            <span class="conf-pct" id="confPct">—</span>
+          </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="summary-card">
+          <div class="card-label">Summary</div>
+          <div class="summary-text" id="summaryText">—</div>
+          <div class="advice-strip" id="adviceStrip"></div>
+        </div>
+
+        <!-- Core tiles -->
+        <div class="tiles" id="tilesGrid"></div>
+
+        <!-- Growth Scale (plant only) -->
+        <div class="growth-card" id="growthCard" style="display:none">
+          <div class="card-label">📏 Growth Scale</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:4px;" id="growthDesc">—</div>
+          <div class="growth-stages">
+            <div class="stage-connector"><div class="stage-connector-fill" id="stageFill" style="width:0%"></div></div>
+            <div class="growth-stage-item" id="stage-seed"><div class="stage-dot">🌱</div><div class="stage-label">Seed</div></div>
+            <div class="growth-stage-item" id="stage-sprout"><div class="stage-dot">🌿</div><div class="stage-label">Sprout</div></div>
+            <div class="growth-stage-item" id="stage-juvenile"><div class="stage-dot">🌳</div><div class="stage-label">Juvenile</div></div>
+            <div class="growth-stage-item" id="stage-mature"><div class="stage-dot">🌲</div><div class="stage-label">Mature</div></div>
+            <div class="growth-stage-item" id="stage-flowering"><div class="stage-dot">🌸</div><div class="stage-label">Flowering</div></div>
+            <div class="growth-stage-item" id="stage-seeding"><div class="stage-dot">🫘</div><div class="stage-label">Seeding</div></div>
+          </div>
+        </div>
+
+        <!-- Medical Benefits (plant only) -->
+        <div class="medical-card" id="medicalCard" style="display:none">
+          <div class="card-label">🌿 Medical Benefits</div>
+          <div class="benefit-list" id="benefitList"></div>
+          <p class="disclaimer">⚠️ For informational purposes only. Consult a healthcare professional before using any plant medicinally.</p>
+        </div>
+
+        <!-- Health & Outgrowths (plant only) -->
+        <div class="health-card" id="healthCard" style="display:none">
+          <div class="card-label">🔬 Plant Health &amp; Outgrowths</div>
+          <div class="outgrowth-section" id="outgrowthSection"></div>
+        </div>
+
+        <!-- Care Plan (plant only) -->
+        <div class="care-card" id="careCard" style="display:none">
+          <div class="card-label">📅 Detailed Care Plan</div>
+          <div class="watering-schedule" id="wateringSchedule"></div>
+          <div class="schedule-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(116,179,206,.5)"></div>Water</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(233,166,42,.5)"></div>Fertilize</div>
+          </div>
+          <div class="care-details" id="careDetails"></div>
+        </div>
+
+        <!-- Forest Heatmap (forest only) -->
+        <div class="heatmap-card" id="heatmapCard" style="display:none">
+          <div class="card-label">🌡️ AI Vegetation Heatmap</div>
+          <div class="heatmap-mode-btns">
+            <button class="hm-btn active" onclick="switchHeatmap('ndvi')">NDVI Health</button>
+            <button class="hm-btn" onclick="switchHeatmap('density')">Canopy Density</button>
+            <button class="hm-btn" onclick="switchHeatmap('stress')">Stress Zones</button>
+          </div>
+          <div class="heatmap-wrap" id="heatmapWrap">
+            <img class="base-img" id="heatmapBaseImg" src="" alt="forest" />
+            <canvas class="heatmap-canvas" id="heatmapCanvas"></canvas>
+          </div>
+          <div class="heatmap-legend">
+            <span>Low</span>
+            <div class="heatmap-grad"></div>
+            <span>High</span>
+          </div>
+          <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:8px;font-family:'Martian Mono',monospace;" id="heatmapCaption"></div>
+        </div>
+
+        <!-- Tips -->
+        <div class="tips-card">
+          <div class="card-label">📸 Next Photo Tips</div>
+          <p id="tipsText">—</p>
+        </div>
+
+        <button class="json-toggle" onclick="toggleJSON()">{ } Raw JSON</button>
+        <pre class="json-pre" id="jsonPre"></pre>
+      </div>
+    </div>
+  </div>
+
+  <footer>PhytoScan · <em>gemini-2.5-flash</em> · Plant.id-inspired logic · v3.0</footer>
+</div>
+
+<script>
+const GEMINI_API_KEY = "AIzaSyCwejXYz4fGhsQlJQG3zeDYMOk1XhXux18";
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+let currentBase64 = "", currentMime = "", currentFile = null;
+let jsonOpen = false, detectedType = "unknown", lastAnalysis = null;
+let heatmapMode = "ndvi";
+
+// ── Checkbox styling sync
+["medical","health","care"].forEach(id => {
+  const inp = document.getElementById("chk-"+id);
+  const lbl = document.getElementById("opt-"+id);
+  inp.addEventListener("change", () => lbl.classList.toggle("checked", inp.checked));
+  lbl.classList.toggle("checked", inp.checked);
+});
+
+// ── File handling
+const zone = document.getElementById("uploadZone");
+const input = document.getElementById("fileInput");
+zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("over"); });
+zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+zone.addEventListener("drop", e => { e.preventDefault(); zone.classList.remove("over"); loadFile(e.dataTransfer.files[0]); });
+input.addEventListener("change", e => loadFile(e.target.files[0]));
+document.getElementById("clearBtn").addEventListener("click", () => {
+  currentFile = null; currentBase64 = ""; input.value = "";
+  document.getElementById("previewBox").classList.remove("visible");
+  document.getElementById("modePanel").classList.remove("visible");
+  document.getElementById("analyzeBtn").disabled = true;
+  resetResults();
+});
+
+function loadFile(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  currentFile = file; currentMime = file.type;
+  const reader = new FileReader();
+  reader.onload = e => {
+    currentBase64 = e.target.result.split(",")[1];
+    document.getElementById("previewImg").src = e.target.result;
+    document.getElementById("previewName").textContent = file.name.length > 26 ? file.name.slice(0,24)+"…" : file.name;
+    document.getElementById("previewBox").classList.add("visible");
+    document.getElementById("analyzeBtn").disabled = false;
+    // Show mode panel — will show/hide after type detection
+    document.getElementById("modePanel").classList.add("visible");
+    resetResults();
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── Build prompt based on selected modes
+function buildPrompt() {
+  const wantMedical = document.getElementById("chk-medical").checked;
+  const wantHealth  = document.getElementById("chk-health").checked;
+  const wantCare    = document.getElementById("chk-care").checked;
+
+  return `You are an expert botanist, herbalist, and remote sensing analyst. Analyze the provided image carefully.
+
+STEP 1 — Determine image type:
+- "single_plant" = close-up of a plant (leaves, stems, flowers, roots)
+- "forest_cover" = aerial/drone/satellite view showing canopy or large vegetation
+- "mixed" = ambiguous
+
+STEP 2 — Produce JSON based on image type.
+
+===FOR single_plant OUTPUT THIS JSON===
+{
+  "image_type": "single_plant",
+  "confidence": "<0-100>%",
+  "timestamp": "<ISO date>",
+  "species": { "common_name": "", "scientific_name": "", "family": "", "certainty": "low|medium|high" },
+  "health_status": { "overall": "healthy|stressed|diseased|dying", "score": "<0-100>", "color_analysis": "", "leaf_condition": "" },
+  "growth_scale": {
+    "current_stage": "seed|sprout|juvenile|mature|flowering|seeding",
+    "stage_description": "<one sentence describing the current stage>",
+    "estimated_age": "<e.g. 2-3 months>",
+    "height_estimate": "<e.g. 15-20 cm>",
+    "progress_percent": "<0-100 representing how far through full lifecycle>"
+  },
+  ${wantMedical ? `"medical_benefits": [
+    { "title": "", "description": "", "usage": "<how to use: tea/topical/etc>", "icon": "<single emoji>" }
+  ],` : `"medical_benefits": [],`}
+  ${wantHealth ? `"outgrowths": [
+    {
+      "name": "<type of outgrowth e.g. gall, fungal growth, tumor>",
+      "description": "",
+      "location_on_plant": "<e.g. lower left leaf, main stem>",
+      "location_normalized": { "x": "<0-1 fraction from left>", "y": "<0-1 fraction from top>", "radius": "<0-1 fraction of image width>" },
+      "severity": "low|medium|high",
+      "removal_method": "<step-by-step removal instructions>",
+      "tools_needed": "<e.g. pruning shears, gloves>"
+    }
+  ],` : `"outgrowths": [],`}
+  ${wantCare ? `"care_plan": {
+    "watering_frequency_days": <number>,
+    "watering_amount": "<e.g. 250ml per session>",
+    "watering_best_time": "<e.g. early morning>",
+    "fertilize_frequency_days": <number>,
+    "fertilizer_type": "",
+    "sunlight_hours": "<e.g. 6-8 hours direct>",
+    "soil_type": "",
+    "humidity": "",
+    "temperature_range": "",
+    "repotting": "",
+    "pruning": "",
+    "special_notes": ""
+  },` : `"care_plan": null,`}
+  "issues_detected": [ { "issue": "", "severity": "low|medium|high", "affected_area": "" } ],
+  "care_recommendations": { "watering": "", "sunlight": "", "fertilization": "", "treatment": "" },
+  "tips_for_user": ""
+}
+
+===FOR forest_cover OUTPUT THIS JSON===
+{
+  "image_type": "forest_cover",
+  "confidence": "<0-100>%",
+  "timestamp": "<ISO date>",
+  "coverage_analysis": { "total_canopy_percent": "", "healthy_vegetation_percent": "", "stressed_vegetation_percent": "", "bare_ground_percent": "" },
+  "vegetation_density": { "ndvi_estimate": "<-1 to 1>", "density_class": "sparse|moderate|dense|very_dense", "dominant_species_type": "" },
+  "health_indicators": { "color_health": "", "canopy_uniformity": "", "stress_zones": [] },
+  "deforestation_risk": "none|low|medium|high",
+  "quadrant_analysis": { "NW": "", "NE": "", "SW": "", "SE": "" },
+  "heatmap_data": {
+    "description": "<one paragraph explaining what the heatmap shows>",
+    "zones": [
+      { "label": "", "x": "<0-1>", "y": "<0-1>", "radius": "<0-1>", "intensity": "<0-1>", "type": "healthy|stressed|bare|water" }
+    ]
+  },
+  "tips_for_user": ""
+}
+
+IMPORTANT: Output ONLY valid raw JSON (no markdown, no backticks, no extra text before it). After the closing brace write exactly "---SUMMARY---" on a new line, then 2-4 sentences of plain-English actionable advice.`;
+}
+
+// ── Analyze
+document.getElementById("analyzeBtn").addEventListener("click", analyze);
+
+async function analyze() {
+  if (!currentBase64) return;
+  setLoading(true, "Identifying species and analyzing image…");
+  hideError(); resetResults();
+
+  try {
+    const body = {
+      contents: [{ parts: [{ text: buildPrompt() }, { inline_data: { mime_type: currentMime, data: currentBase64 } }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 8192 }
+    };
+
+    const res = await fetch(GEMINI_URL, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+
+    const data = await res.json();
+    const allParts = data.candidates?.[0]?.content?.parts || [];
+    const rawText = allParts.filter(p => p.text && !p.thought).map(p => p.text).join("\n").trim();
+    if (!rawText) throw new Error("Empty response from Gemini. Please try again.");
+    parseAndRender(rawText);
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function parseAndRender(raw) {
+  const sepIdx = raw.indexOf("---SUMMARY---");
+  let jsonStr  = (sepIdx !== -1 ? raw.slice(0, sepIdx) : raw).trim();
+  const summary = sepIdx !== -1 ? raw.slice(sepIdx + 13).trim() : "";
+
+  jsonStr = jsonStr.replace(/^```json\s*/i,"").replace(/^```\s*/i,"").replace(/\s*```$/g,"").trim();
+  const s = jsonStr.indexOf("{"), e = jsonStr.lastIndexOf("}");
+  if (s !== -1 && e > s) jsonStr = jsonStr.slice(s, e+1);
+
+  let parsed;
+  try { parsed = JSON.parse(jsonStr); }
+  catch {
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) { try { parsed = JSON.parse(m[0]); } catch { showError("Could not parse Gemini response. Try again."); return; } }
+    else { showError("No valid JSON in response. Try again."); return; }
+  }
+
+  lastAnalysis = parsed;
+  renderResults(parsed, summary, jsonStr);
+}
+
+function renderResults(a, summary, rawJson) {
+  const type = (a.image_type || "mixed").toLowerCase();
+  detectedType = type;
+  const conf = parseInt(a.confidence) || 0;
+
+  const tag = document.getElementById("typeTag");
+  if (type === "single_plant") { tag.textContent = "🌱 Single Plant"; tag.className = "type-tag sp"; }
+  else if (type === "forest_cover") { tag.textContent = "🛩️ Forest Cover"; tag.className = "type-tag fc"; }
+  else { tag.textContent = "🌍 Mixed"; tag.className = "type-tag mix"; }
+
+  document.getElementById("confFill").style.width = conf+"%";
+  document.getElementById("confPct").textContent = conf+"%";
+  document.getElementById("summaryText").textContent = summary || autoSummary(a, type);
+
+  // Advice strip
+  let advice = "";
+  if (type === "single_plant" && a.care_recommendations) {
+    const cr = a.care_recommendations;
+    const bits = [];
+    if (cr.watering) bits.push(`💧 <strong>Watering:</strong> ${cr.watering}`);
+    if (cr.sunlight) bits.push(`☀️ <strong>Light:</strong> ${cr.sunlight}`);
+    if (cr.treatment) bits.push(`🩺 <strong>Treatment:</strong> ${cr.treatment}`);
+    if (cr.fertilization) bits.push(`🌾 <strong>Fertilizer:</strong> ${cr.fertilization}`);
+    advice = bits.join("<br>");
+  } else if (type === "forest_cover" && a.coverage_analysis) {
+    const ca = a.coverage_analysis;
+    advice = `🌲 Canopy: <strong>${ca.total_canopy_percent||"—"}</strong> · Healthy: <strong>${ca.healthy_vegetation_percent||"—"}</strong> · Stressed: <strong>${ca.stressed_vegetation_percent||"—"}</strong> · Bare: <strong>${ca.bare_ground_percent||"—"}</strong>`;
+  }
+  document.getElementById("adviceStrip").innerHTML = advice;
+
+  // Core tiles
+  document.getElementById("tilesGrid").innerHTML = buildTiles(a, type)
+    .map(t => `<div class="tile"><div class="tile-k">${t.k}</div><div class="tile-v ${t.c||""}">${t.v}</div></div>`).join("");
+
+  if (type === "single_plant") {
+    renderGrowthScale(a.growth_scale);
+    if (document.getElementById("chk-medical").checked) renderMedical(a.medical_benefits || []);
+    if (document.getElementById("chk-health").checked)  renderHealth(a, a.outgrowths || []);
+    if (document.getElementById("chk-care").checked)    renderCare(a.care_plan);
+    document.getElementById("heatmapCard").style.display = "none";
+    // Show mode panel for plants
+    document.getElementById("modePanel").classList.add("visible");
+  } else if (type === "forest_cover") {
+    renderHeatmap(a);
+    document.getElementById("growthCard").style.display = "none";
+    document.getElementById("medicalCard").style.display = "none";
+    document.getElementById("healthCard").style.display = "none";
+    document.getElementById("careCard").style.display = "none";
+    // Hide plant-only mode panel for forest
+    document.getElementById("modePanel").classList.remove("visible");
+  }
+
+  document.getElementById("tipsText").textContent = a.tips_for_user || "Photograph in natural daylight for best results.";
+  try { document.getElementById("jsonPre").textContent = JSON.stringify(JSON.parse(rawJson), null, 2); }
+  catch { document.getElementById("jsonPre").textContent = rawJson; }
+
+  document.getElementById("placeholder").style.display = "none";
+  document.getElementById("resultsPanel").classList.add("visible");
+}
+
+// ── Growth Scale
+function renderGrowthScale(gs) {
+  const card = document.getElementById("growthCard");
+  if (!gs) { card.style.display = "none"; return; }
+  card.style.display = "block";
+  document.getElementById("growthDesc").textContent =
+    `${gs.stage_description || ""} ${gs.estimated_age ? "Age: "+gs.estimated_age+"." : ""} ${gs.height_estimate ? "Height: "+gs.height_estimate+"." : ""}`.trim();
+
+  const stages = ["seed","sprout","juvenile","mature","flowering","seeding"];
+  const current = (gs.current_stage || "").toLowerCase();
+  const currentIdx = stages.indexOf(current);
+  stages.forEach((s, i) => {
+    const el = document.getElementById("stage-"+s);
+    if (!el) return;
+    const dot = el.querySelector(".stage-dot");
+    const lbl = el.querySelector(".stage-label");
+    dot.className = "stage-dot" + (i < currentIdx ? " past" : i === currentIdx ? " active" : "");
+    lbl.className = "stage-label" + (i === currentIdx ? " active" : "");
+  });
+  const pct = gs.progress_percent ? parseInt(gs.progress_percent) : (currentIdx / (stages.length-1)) * 100;
+  setTimeout(() => { document.getElementById("stageFill").style.width = Math.min(pct,100)+"%"; }, 100);
+}
+
+// ── Medical Benefits
+function renderMedical(benefits) {
+  const card = document.getElementById("medicalCard");
+  if (!benefits || benefits.length === 0) { card.style.display = "none"; return; }
+  card.style.display = "block";
+  document.getElementById("benefitList").innerHTML = benefits.map(b => `
+    <div class="benefit-item">
+      <div class="benefit-icon">${b.icon || "🌿"}</div>
+      <div class="benefit-body">
+        <div class="benefit-title">${b.title || ""}</div>
+        <div class="benefit-desc">${b.description || ""}${b.usage ? " <em>Usage: "+b.usage+"</em>" : ""}</div>
+      </div>
+    </div>`).join("");
+}
+
+// ── Health & Outgrowths
+function renderHealth(a, outgrowths) {
+  const card = document.getElementById("healthCard");
+  card.style.display = "block";
+  const hs = a.health_status || {};
+  let html = `<div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+    <div class="tile" style="flex:1;min-width:120px"><div class="tile-k">Overall</div><div class="tile-v ${hs.overall==='healthy'?'g':hs.overall==='stressed'?'w':'b'}">${hs.overall||"—"}</div></div>
+    <div class="tile" style="flex:1;min-width:120px"><div class="tile-k">Health Score</div><div class="tile-v ${parseInt(hs.score)>=70?'g':parseInt(hs.score)>=40?'w':'b'}">${hs.score||"—"}/100</div></div>
+    <div class="tile" style="flex:1;min-width:160px"><div class="tile-k">Leaf Condition</div><div class="tile-v">${hs.leaf_condition||"—"}</div></div>
+  </div>`;
+
+  if (outgrowths.length > 0) {
+    html += `<div style="font-family:'Martian Mono',monospace;font-size:9px;letter-spacing:1.5px;color:#f1948a;margin-bottom:10px;">⚠ ${outgrowths.length} OUTGROWTH${outgrowths.length>1?'S':''} DETECTED</div>`;
+
+    // Canvas overlay image
+    html += `<div class="outgrowth-img-wrap" id="outgrowthImgWrap">
+      <img src="${document.getElementById("previewImg").src}" alt="plant" id="outgrowthImg" onload="drawOutgrowths()" />
+      <canvas class="outgrowth-canvas" id="outgrowthCanvas"></canvas>
+    </div>`;
+
+    // List
+    html += `<div class="outgrowth-list">` + outgrowths.map((o, i) => `
+      <div class="outgrowth-item">
+        <h5>${["🔴","🟠","🟡"][["high","medium","low"].indexOf(o.severity)] || "🔴"} ${o.name || "Outgrowth"} <span style="font-weight:400;font-size:11px;color:rgba(255,255,255,.4)">— ${o.location_on_plant||""}</span></h5>
+        <p>${o.description || ""}</p>
+        ${o.removal_method ? `<div class="removal-method"><strong>Removal:</strong> ${o.removal_method}${o.tools_needed ? " <br><strong>Tools:</strong> "+o.tools_needed : ""}</div>` : ""}
+      </div>`).join("") + `</div>`;
+  } else {
+    html += `<div style="padding:14px;background:rgba(82,183,136,.06);border-radius:10px;border:1px solid rgba(82,183,136,.15);font-size:13px;color:var(--sprout);">✅ No outgrowths or abnormalities detected. Plant appears structurally healthy.</div>`;
+  }
+
+  document.getElementById("outgrowthSection").innerHTML = html;
+
+  // Store for canvas drawing
+  if (outgrowths.length > 0) {
+    window._outgrowths = outgrowths;
+  }
+}
+
+// Draw outgrowth circles on canvas
+window.drawOutgrowths = function() {
+  const img = document.getElementById("outgrowthImg");
+  const canvas = document.getElementById("outgrowthCanvas");
+  if (!img || !canvas || !window._outgrowths) return;
+  canvas.width = img.naturalWidth || img.offsetWidth;
+  canvas.height = img.naturalHeight || img.offsetHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const W = canvas.width, H = canvas.height;
+
+  window._outgrowths.forEach((o, i) => {
+    const loc = o.location_normalized;
+    if (!loc) return;
+    const cx = parseFloat(loc.x) * W;
+    const cy = parseFloat(loc.y) * H;
+    const r  = parseFloat(loc.radius) * W;
+    const color = o.severity === "high" ? "#e74c3c" : o.severity === "medium" ? "#e9a62a" : "#f1c40f";
+
+    // Pulsing circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Fill glow
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, color.replace(")", ",0.12)").replace("rgb","rgba").replace("#e74c3c","rgba(231,76,60,0.12)").replace("#e9a62a","rgba(233,166,42,0.12)").replace("#f1c40f","rgba(241,196,15,0.12)"));
+    grad.addColorStop(1, "transparent");
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Label
+    ctx.fillStyle = "#fff";
+    ctx.font = `bold ${Math.max(12, r*0.4)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText(i+1, cx, cy + r*0.14);
+
+    // Arrow label box
+    const bx = cx + r + 8, by = cy - 10;
+    const label = o.name || ("Outgrowth "+(i+1));
+    ctx.font = "11px sans-serif";
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.beginPath();
+    ctx.roundRect(bx, by, tw+12, 20, 4);
+    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.fillText(label, bx+6, by+14);
+  });
+};
+
+// ── Care Plan
+function renderCare(cp) {
+  const card = document.getElementById("careCard");
+  if (!cp) { card.style.display = "none"; return; }
+  card.style.display = "block";
+
+  const waterDays = parseInt(cp.watering_frequency_days) || 2;
+  const fertDays  = parseInt(cp.fertilize_frequency_days) || 14;
+  const dayNames  = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+  let scheduleHtml = "";
+  dayNames.forEach((d, i) => {
+    const isWater = (i % waterDays === 0);
+    const isFert  = (i % fertDays === 0);
+    scheduleHtml += `<div class="day-cell">
+      <div class="day-name">${d}</div>
+      <div class="day-dot ${isWater?"water":""} ${isFert?"fertilize":""}">${isWater ? "💧" : isFert ? "🌾" : "·"}</div>
+    </div>`;
+  });
+  document.getElementById("wateringSchedule").innerHTML = scheduleHtml;
+
+  const rows = [
+    { icon:"💧", title:"Watering", val: `Every ${waterDays} day${waterDays>1?"s":""}${cp.watering_amount ? " · "+cp.watering_amount : ""}${cp.watering_best_time ? " · Best time: "+cp.watering_best_time : ""}` },
+    { icon:"☀️", title:"Sunlight", val: cp.sunlight_hours || "—" },
+    { icon:"🌱", title:"Soil", val: cp.soil_type || "—" },
+    { icon:"🌾", title:"Fertilizer", val: `${cp.fertilizer_type || "—"} every ${fertDays} days` },
+    { icon:"💨", title:"Humidity", val: cp.humidity || "—" },
+    { icon:"🌡️", title:"Temperature", val: cp.temperature_range || "—" },
+    { icon:"🪴", title:"Repotting", val: cp.repotting || "—" },
+    { icon:"✂️", title:"Pruning", val: cp.pruning || "—" },
+  ].filter(r => r.val && r.val !== "—");
+
+  if (cp.special_notes) rows.push({ icon:"📝", title:"Special Notes", val: cp.special_notes });
+
+  document.getElementById("careDetails").innerHTML = rows.map(r => `
+    <div class="care-row">
+      <div class="care-row-icon">${r.icon}</div>
+      <div class="care-row-body">
+        <div class="care-row-title">${r.title}</div>
+        <div class="care-row-val">${r.val}</div>
+      </div>
+    </div>`).join("");
+}
+
+// ── Forest Heatmap
+function renderHeatmap(a) {
+  const card = document.getElementById("heatmapCard");
+  card.style.display = "block";
+
+  const img = document.getElementById("heatmapBaseImg");
+  img.src = document.getElementById("previewImg").src;
+  img.onload = () => drawHeatmap(a, heatmapMode);
+
+  if (a.heatmap_data?.description) {
+    document.getElementById("heatmapCaption").textContent = a.heatmap_data.description;
+  }
+  window._forestAnalysis = a;
+}
+
+function switchHeatmap(mode) {
+  heatmapMode = mode;
+  document.querySelectorAll(".hm-btn").forEach(b => b.classList.remove("active"));
+  event.target.classList.add("active");
+  if (window._forestAnalysis) drawHeatmap(window._forestAnalysis, mode);
+}
+
+function drawHeatmap(a, mode) {
+  const canvas = document.getElementById("heatmapCanvas");
+  const img    = document.getElementById("heatmapBaseImg");
+  if (!canvas || !img.complete) return;
+
+  canvas.width  = img.naturalWidth  || img.offsetWidth;
+  canvas.height = img.naturalHeight || img.offsetHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const W = canvas.width, H = canvas.height;
+
+  const zones = a.heatmap_data?.zones || [];
+
+  if (zones.length > 0) {
+    // Draw AI-provided zones
+    zones.forEach(z => {
+      const cx = parseFloat(z.x) * W;
+      const cy = parseFloat(z.y) * H;
+      const r  = parseFloat(z.radius) * Math.max(W, H);
+      const intensity = parseFloat(z.intensity) || 0.5;
+
+      let color;
+      if (mode === "ndvi") {
+        // Green = healthy, red = stressed
+        color = z.type === "healthy"
+          ? `rgba(0,${Math.round(180*intensity)},0,`
+          : z.type === "stressed"
+          ? `rgba(${Math.round(200*intensity)},${Math.round(50*intensity)},0,`
+          : `rgba(150,100,50,`;
+      } else if (mode === "density") {
+        const g = Math.round(255 * intensity);
+        color = `rgba(0,${g},${Math.round(80*(1-intensity))},`;
+      } else {
+        // stress: red heat
+        color = `rgba(${Math.round(255*intensity)},${Math.round(80*(1-intensity))},0,`;
+      }
+
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0, color+"0.65)");
+      grad.addColorStop(0.5, color+"0.35)");
+      grad.addColorStop(1, color+"0)");
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI*2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    });
+  } else {
+    // Fallback: generate heatmap from coverage_analysis data
+    const ca = a.coverage_analysis || {};
+    const healthyPct = parseFloat(ca.healthy_vegetation_percent) || 60;
+    const stressedPct = parseFloat(ca.stressed_vegetation_percent) || 20;
+    const barePct = parseFloat(ca.bare_ground_percent) || 20;
+
+    const numZones = 24;
+    const seededRng = mulberry32(42);
+    for (let i = 0; i < numZones; i++) {
+      const roll = seededRng() * 100;
+      const isHealthy  = roll < healthyPct;
+      const isStressed = !isHealthy && roll < healthyPct + stressedPct;
+      const cx = seededRng() * W, cy = seededRng() * H;
+      const r = (0.06 + seededRng() * 0.12) * Math.max(W, H);
+      const intensity = 0.4 + seededRng() * 0.6;
+      let color;
+      if (mode === "ndvi") {
+        color = isHealthy ? `rgba(0,${Math.round(160*intensity)},0,` : isStressed ? `rgba(${Math.round(200*intensity)},${Math.round(50*intensity)},0,` : `rgba(139,100,20,`;
+      } else if (mode === "density") {
+        const g = isHealthy ? Math.round(200*intensity) : Math.round(80*intensity);
+        color = `rgba(0,${g},${Math.round(60*(1-intensity))},`;
+      } else {
+        color = isStressed ? `rgba(${Math.round(255*intensity)},${Math.round(60*(1-intensity))},0,` : isHealthy ? `rgba(0,${Math.round(100*intensity)},0,` : `rgba(${Math.round(180*intensity)},${Math.round(140*intensity)},0,`;
+      }
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0, color+"0.6)");
+      grad.addColorStop(0.5, color+"0.3)");
+      grad.addColorStop(1, color+"0)");
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI*2);
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+  }
+
+  // Overlay quadrant labels
+  if (a.quadrant_analysis) {
+    const qa = a.quadrant_analysis;
+    const quads = [
+      { k:"NW", x:W*.15, y:H*.1 }, { k:"NE", x:W*.7, y:H*.1 },
+      { k:"SW", x:W*.15, y:H*.85 }, { k:"SE", x:W*.7, y:H*.85 }
+    ];
+    quads.forEach(q => {
+      const val = qa[q.k];
+      if (!val) return;
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.font = "bold 11px sans-serif";
+      const tw = ctx.measureText(q.k).width;
+      ctx.beginPath();
+      ctx.roundRect(q.x-4, q.y-12, tw+8, 16, 3);
+      ctx.fill();
+      ctx.fillStyle = "#d8f3dc";
+      ctx.fillText(q.k, q.x, q.y);
+    });
+  }
+}
+
+function mulberry32(a) {
+  return function() {
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+
+// ── Tiles
+function buildTiles(d, type) {
+  const t = [];
+  if (type === "single_plant") {
+    const sp = d.species||{}, hs = d.health_status||{};
+    const score = parseInt(hs.score);
+    t.push({ k:"Common Name",    v: sp.common_name    || "—" });
+    t.push({ k:"Scientific",     v: `<em>${sp.scientific_name||"—"}</em>` });
+    t.push({ k:"Family",         v: sp.family         || "—" });
+    t.push({ k:"ID Certainty",   v: sp.certainty      || "—" });
+    t.push({ k:"Health Score",   v: hs.score||"—",   c:score>=70?"g":score>=40?"w":"b" });
+    t.push({ k:"Status",         v: hs.overall||"—", c:hs.overall==="healthy"?"g":hs.overall==="stressed"?"w":"b" });
+    t.push({ k:"Color Analysis", v: hs.color_analysis || "—" });
+    if (d.growth_scale) t.push({ k:"Current Stage", v: d.growth_scale.current_stage||"—" });
+    (d.issues_detected||[]).forEach(i => t.push({ k:i.issue||"Issue", v:i.severity||"—", c:i.severity==="low"?"g":i.severity==="medium"?"w":"b" }));
+  } else if (type === "forest_cover") {
+    const ca=d.coverage_analysis||{}, vd=d.vegetation_density||{}, qa=d.quadrant_analysis||{};
+    const risk=d.deforestation_risk;
+    t.push({ k:"Total Canopy",        v:ca.total_canopy_percent       ||"—", c:"g" });
+    t.push({ k:"Healthy Vegetation",  v:ca.healthy_vegetation_percent ||"—", c:"g" });
+    t.push({ k:"Stressed Vegetation", v:ca.stressed_vegetation_percent||"—", c:"w" });
+    t.push({ k:"Bare Ground",         v:ca.bare_ground_percent        ||"—" });
+    t.push({ k:"NDVI Estimate",       v:vd.ndvi_estimate              ||"—" });
+    t.push({ k:"Density Class",       v:vd.density_class              ||"—" });
+    t.push({ k:"Dominant Type",       v:vd.dominant_species_type      ||"—" });
+    t.push({ k:"Deforestation Risk",  v:risk||"—", c:(risk==="none"||risk==="low")?"g":risk==="medium"?"w":"b" });
+    if (qa.NW) t.push({ k:"NW Quadrant", v:qa.NW });
+    if (qa.NE) t.push({ k:"NE Quadrant", v:qa.NE });
+    if (qa.SW) t.push({ k:"SW Quadrant", v:qa.SW });
+    if (qa.SE) t.push({ k:"SE Quadrant", v:qa.SE });
+  }
+  return t;
+}
+
+function autoSummary(d, type) {
+  if (type === "single_plant") return `This ${d.species?.common_name||"plant"} appears ${d.health_status?.overall||"unknown"}.`;
+  if (type === "forest_cover") return `Canopy coverage: ${d.coverage_analysis?.total_canopy_percent||"unknown"}.`;
+  return "Analysis complete.";
+}
+
+function setLoading(on, sub) {
+  document.getElementById("loadingState").classList.toggle("active", on);
+  document.getElementById("analyzeBtn").disabled = on || !currentBase64;
+  if (sub) document.getElementById("loadingSub").textContent = sub;
+  if (on) { document.getElementById("placeholder").style.display="none"; document.getElementById("resultsPanel").classList.remove("visible"); }
+}
+function showError(msg) { document.getElementById("errorMsg").textContent=msg; document.getElementById("errorState").classList.add("visible"); }
+function hideError()    { document.getElementById("errorState").classList.remove("visible"); }
+function resetResults() { document.getElementById("resultsPanel").classList.remove("visible"); }
+function toggleJSON()   { jsonOpen=!jsonOpen; document.getElementById("jsonPre").classList.toggle("open",jsonOpen); }
+</script>
+</body>
+</html>
