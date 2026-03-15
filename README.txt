@@ -16,3 +16,5 @@ Size: 53KB single file
 ✅ Drone aerial canopy shots (NDVI proxy)
 ✅ Satellite forest patches (coverage %)
 ❌ Blurry/dark images (reduces accuracy)
+
+
